@@ -47,8 +47,7 @@ def main():
     # Get raw average angle
     df['avg_angle_raw'] = (df['right_angle'] + df['left_angle']) / 2
     
-    # Apply a rolling mean over 5 frames (0.15 seconds)
-    # This removes high-frequency noise from the camera
+    # Apply a rolling mean over 5 frames (0.15 seconds) (removes high-frequency noise from the camera)
     df['smoothed_angle'] = df['avg_angle_raw'].rolling(window=5, center=True).mean()
     
     # fill NaN values at start/end with the raw angle so we don't lose data
