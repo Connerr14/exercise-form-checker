@@ -11,8 +11,8 @@ const char* laptopIpAddress = "";
 // Using port 4210 for communication
 const int udpPort; 
 
+// Init the UDP object
 WiFiUDP udp;
-int counter = 0;
 
 // Defining the buzzer pin
 int buzzerPin = 27;
@@ -56,9 +56,9 @@ void setup() {
   
   // Configure the buzzer pin as an output
   pinMode(buzzerPin, OUTPUT);
+
   // Ensure the buzzer is off by default
   digitalWrite(buzzerPin, LOW);
-
 
 
   // Scan for networks
@@ -100,6 +100,7 @@ void setup() {
   }
 }
 
+// A function to send data packets to the program
 void sendPacket(int fsrReading1, int fsrReading2) {
    // Format a text packet
   String dataToSend = String(fsrReading1) + " " + String(fsrReading2);
@@ -126,7 +127,7 @@ void sendPacket(int fsrReading1, int fsrReading2) {
     }
   }
   
-  counter++;
+  // Sending packets every second
   delay(1000);
 }
 
@@ -141,15 +142,13 @@ void loop() {
     return;
   }
 
-  // Send the pressure sensor readings to the python script
+  // Get the pressure sensor readings
   int fsr1Reading = analogRead(fsrPin1);
   int fsr2Reading = analogRead(fsrPin2);
 
   Serial.println(fsr1Reading);
   Serial.println(fsr2Reading);
 
-
+  // Send the pressure sensor readings to the python program using UDP
   sendPacket(fsr1Reading, fsr2Reading);
-
- 
 }

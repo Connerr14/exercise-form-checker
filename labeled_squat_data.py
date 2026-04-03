@@ -1,15 +1,15 @@
 import pandas as pd
 import os
 
-#  File Configuration
+#  File Configuration, and setting the headers.
 INPUT_FILE = 'squat_dataset.csv'
 OUTPUT_FILE = 'labeled_squat_data.csv'
-
 HEADERS = [
     'lean', 'asymmetry', 'right_angle', 'left_angle', 
     'force_right', 'force_left', 'force_diff', 'label'
 ]
 
+""" This function categorizes the line depending on its value"""
 def categorize_rep(row):
     # Check for safety errors
     if row['force_diff'] == 0:
@@ -19,6 +19,7 @@ def categorize_rep(row):
     if row['lean'] > 12:
         return 'Forward_Lean'
 
+    # Gets the average angle
     avg_angle = (row['right_angle'] + row['left_angle']) / 2
     
     # Check for stationary markers
@@ -36,15 +37,16 @@ def categorize_rep(row):
     return 'Too_Shallow'
 
 def main():
+    # Ensuring the input file is found
     if not os.path.exists(INPUT_FILE):
         print(f"Error: {INPUT_FILE} not found.")
         return
-
+    
+    # Getting the csv file
     df = pd.read_csv(INPUT_FILE, names=HEADERS, header=0)
     df.columns = df.columns.str.strip()
 
     # Temporal smoothing logic
-    # Get raw average angle
     df['avg_angle_raw'] = (df['right_angle'] + df['left_angle']) / 2
     
     # Apply a rolling mean over 5 frames (0.15 seconds) (removes high-frequency noise from the camera)
@@ -55,14 +57,13 @@ def main():
 
     #  Calculate difference based on the SMOOTHED signal
     df['angle_diff'] = df['smoothed_angle'].diff()
-
     df['label'] = df.apply(categorize_rep, axis=1)
 
+    # Removing the helper columns
     df = df.drop(columns=['avg_angle_raw', 'smoothed_angle'])
     df.to_csv(OUTPUT_FILE, index=False)
 
-    print("-" * 30)
-    print(f"Success! Smoothed data saved to {OUTPUT_FILE}")
+    print(f"Smoothed data saved to {OUTPUT_FILE}")
     print(df['label'].value_counts())
 
 if __name__ == "__main__":
