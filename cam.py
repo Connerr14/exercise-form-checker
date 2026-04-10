@@ -2,7 +2,7 @@ import cv2
 # This class is for camera manipulation
 class VideoStream:
     # Initializing the camera with cv2 (OpenCV)
-    def __init__(self, camera_index=0):
+    def __init__(self, camera_index=1):
         """Initializes the webcam."""
         self.cap = cv2.VideoCapture(camera_index)
 

@@ -18,7 +18,7 @@ def categorize_rep(row):
         return 'Uneven_Weight'
     
 
-    # Baseline lean is 10 degrees. We add 5 degrees of "allowance" 
+    # Baseline lean is 10 degrees. Adding 5 degrees of "allowance" 
     # for every unit of body_ratio (Femur/Torso).
     # Long-legged users get a higher threshold; short-legged users get a stricter one.
     dynamic_lean_limit = 10 + (row['body_ratio'] * 5)
@@ -51,20 +51,37 @@ def main():
         print(f"Error: {INPUT_FILE} not found.")
         return
     
-    # Getting the csv file
-    df = pd.read_csv(INPUT_FILE, names=HEADERS, header=0)
+    # --- SAFE LOAD LOGIC ---
+    # We read the file manually first to fix any old 8-column rows
+    fixed_rows = []
+    with open(INPUT_FILE, 'r') as f:
+        for line in f:
+            parts = line.strip().split(',')
+            if not parts or parts == ['']: continue # Skip empty lines
+            
+            # If it's an old row (8 columns), insert a 1.0 ratio before the label
+            if len(parts) == 8:
+                parts.insert(7, '1.0') 
+            
+            fixed_rows.append(parts)
+
+    # Convert the fixed rows into a DataFrame
+    # We use header=None because your sample shows your file has no text header
+    df = pd.DataFrame(fixed_rows, columns=HEADERS)
+    
+    # Convert numeric columns from strings to floats so the math works
+    numeric_cols = ['lean', 'asymmetry', 'right_angle', 'left_angle', 'force_right', 'force_left', 'force_diff', 'body_ratio']
+    df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric)
+    
+    # --- REST OF YOUR LOGIC ---
     df.columns = df.columns.str.strip()
 
     # Temporal smoothing logic
     df['avg_angle_raw'] = (df['right_angle'] + df['left_angle']) / 2
-    
-    # Apply a rolling mean over 5 frames (0.15 seconds) (removes high-frequency noise from the camera)
     df['smoothed_angle'] = df['avg_angle_raw'].rolling(window=5, center=True).mean()
-    
-    # fill NaN values at start/end with the raw angle so we don't lose data
     df['smoothed_angle'] = df['smoothed_angle'].fillna(df['avg_angle_raw'])
 
-    #  Calculate difference based on the SMOOTHED signal
+    # Calculate difference based on the SMOOTHED signal
     df['angle_diff'] = df['smoothed_angle'].diff()
     df['label'] = df.apply(categorize_rep, axis=1)
 
@@ -72,7 +89,7 @@ def main():
     df = df.drop(columns=['avg_angle_raw', 'smoothed_angle'])
     df.to_csv(OUTPUT_FILE, index=False)
 
-    print(f"Smoothed data saved to {OUTPUT_FILE}")
+    print(f"Success! Repaired, Smoothed, and Labeled data saved to {OUTPUT_FILE}")
     print(df['label'].value_counts())
 
 if __name__ == "__main__":
