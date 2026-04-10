@@ -132,7 +132,7 @@ def checkWeightDistribution (right_difference_avg, left_difference_avg):
 """Handles logic for manual data labeling and recording."""
 def run_recording_mode(img, tracker, collector_obj, data):
     # Unpack the data into their respective variables
-    lean, asym, r_angle, l_angle, avg_angle, weights, speed = data
+    lean, asym, r_angle, l_angle, avg_angle, weights, _, b_ratio = data
     
     # Calculate warnings
     active_warnings = []
@@ -143,7 +143,7 @@ def run_recording_mode(img, tracker, collector_obj, data):
 
     # Save Snapshot
     snapshot = [round(lean, 2), round(asym, 2), round(r_angle, 2), round(l_angle, 2), 
-                weights[0], weights[1], weights[2], "TRAINING_DATA", round(speed, 2)]
+                weights[0], weights[1], weights[2], round(b_ratio, 3), "TRAINING_DATA"]
     collector_obj.collect(snapshot)
 
     # Draw the skeleton and add the text to the camera frame
@@ -160,14 +160,14 @@ def run_recording_mode(img, tracker, collector_obj, data):
 """Handles AI prediction, state stabilization, and coaching UI."""
 def run_ai_coaching_mode(img, tracker, ai_model, coach, history, data, dims):
     # Unpack the data into their respective variables
-    lean, asym, r_angle, l_angle, _, weights, speed = data
+    lean, asym, r_angle, l_angle, _, weights, speed, b_ratio  = data
 
     # Unpack the dimensions data
     img_h, img_w = dims
 
     # Create and group the data frame with the corresponding data that was parsed
-    feat_cols = ['lean', 'asymmetry', 'right_angle', 'left_angle', 'force_right', 'force_left', 'force_diff', 'angle_diff']
-    features = pd.DataFrame([[lean, asym, r_angle, l_angle, weights[0], weights[1], weights[2], speed]], columns=feat_cols)
+    feat_cols = ['lean', 'asymmetry', 'right_angle', 'left_angle', 'force_right', 'force_left', 'force_diff','body_ratio', 'angle_diff']
+    features = pd.DataFrame([[lean, asym, r_angle, l_angle, weights[0], weights[1], weights[2], b_ratio, speed]], columns=feat_cols)
     
     # Get the raw prediction from the model
     raw_pred = ai_model.predict(features)[0]
@@ -266,6 +266,10 @@ def analyze_squat_form(img, collector_obj):
         speed = avg_angle - LAST_AVG_ANGLE
         LAST_AVG_ANGLE = avg_angle
 
+        r_femur = np.linalg.norm(np.array(landmarks[0]) - np.array(landmarks[2]))
+        r_torso = np.linalg.norm(np.array(landmarks[6]) - np.array(landmarks[0]))
+        body_ratio = r_femur / r_torso if r_torso != 0 else 1.0
+
         # Read a fsr reading packet from the ESP32 micro-controller
         sensor_data = esp.read_packet()
 
@@ -278,7 +282,7 @@ def analyze_squat_form(img, collector_obj):
             LAST_WEIGHT_STATE = checkWeightDistribution(forces[0], forces[1])
 
         # Combine all data points into a tuple
-        current_data = (lean, asym, r_angle, l_angle, avg_angle, LAST_WEIGHT_STATE, speed)
+        current_data = (lean, asym, r_angle, l_angle, avg_angle, LAST_WEIGHT_STATE, speed, body_ratio)
 
         # If the recording option is selected, run the live feedback mode (For data collection)
         if collector_obj.is_recording:

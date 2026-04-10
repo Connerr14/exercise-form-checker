@@ -6,7 +6,7 @@ INPUT_FILE = 'squat_dataset.csv'
 OUTPUT_FILE = 'labeled_squat_data.csv'
 HEADERS = [
     'lean', 'asymmetry', 'right_angle', 'left_angle', 
-    'force_right', 'force_left', 'force_diff', 'label'
+    'force_right', 'force_left', 'force_diff', 'body_ratio', 'label'
 ]
 
 """ This function categorizes the line depending on its value"""
@@ -16,6 +16,15 @@ def categorize_rep(row):
         return 'Force_Imbalance'
     if row['asymmetry'] > 15:
         return 'Uneven_Weight'
+    
+
+    # Baseline lean is 10 degrees. We add 5 degrees of "allowance" 
+    # for every unit of body_ratio (Femur/Torso).
+    # Long-legged users get a higher threshold; short-legged users get a stricter one.
+    dynamic_lean_limit = 10 + (row['body_ratio'] * 5)
+
+    if row['lean'] > dynamic_lean_limit:
+        return 'Forward_Lean'
     if row['lean'] > 12:
         return 'Forward_Lean'
 
